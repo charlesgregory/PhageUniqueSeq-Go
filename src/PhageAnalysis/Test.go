@@ -32,7 +32,7 @@ import (
 //}
 
 //func primerAnalysisTest(){
-//	f, err := os.Create("C:\\Users\\musta_000\\IdeaProjects\\GoProjects\\Data\\Test.csv")
+//	f, err := os.Create(path+"\\Data\\Test.csv")
 //	if err != nil {
 //		log.Fatal(err)
 //	}
@@ -140,7 +140,7 @@ import (
 //
 //}
 func readTest()[]uint64{
-	f, _ := os.Open("C:\\Users\\musta_000\\IdeaProjects\\GoProjects\\Data\\Test.csv")
+	f, _ := os.Open(workingDir +"\\Data\\Test.csv")
 	var lines []uint64
 	scanner := bufio.NewScanner(f)
 	count:=0
