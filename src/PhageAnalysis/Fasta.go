@@ -56,7 +56,8 @@ func ReadUniquePrimers(cluster string, strain string)[]uint64{
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line:=scanner.Text()
-		if(strings.Contains(line,strain)&&strings.Contains(line,cluster)){
+		if(strings.Contains(line,strain+",")&&strings.Contains(line,cluster+",")){
+			//println(line)
 			strA:=strings.Split(line,",")
 			i,_:=strconv.ParseUint(strA[2],10,64)
 			lines = append(lines,i )
@@ -121,6 +122,7 @@ func ParseArgs(args []string)  {
 	}
 }
 func ParsePhages()map[string]map[string]map[string]string{
+	println("Building seqs")
 	phageList:=make(map[string]map[string]map[string]string)
 	total:=""
 	count:=1
@@ -185,16 +187,14 @@ func ParsePhages()map[string]map[string]map[string]string{
 		if(!check){
 			phageList[strain]=make(map[string]map[string]string)
 		}
+		if(subcluster=="Singleton"){
+			subcluster=name
+		}
 		_,check=phageList[strain][subcluster]
 		if(!check){
 			phageList[strain][subcluster]=make(map[string]string)
 		}
-		if(subcluster=="Singleton"){
-			phageList[strain][name]=make(map[string]string)
-			phageList[strain][name][name]=fasta
-		}else{
-			phageList[strain][subcluster][name]=fasta
-		}
+		phageList[strain][subcluster][name]=fasta
 
 	}
 	var seq string
@@ -218,5 +218,6 @@ func ParsePhages()map[string]map[string]map[string]string{
 			}
 		}
 	}
+	println("Built")
 	return phageList
 }
