@@ -13,6 +13,8 @@ import (
 	"time"
 	"math"
 	"sort"
+	"regexp"
+	"sync"
 )
 
 //func DoAll(){
@@ -69,7 +71,7 @@ func PrimerAnalysisTest(bps int,strain string){
 			}
 			for primer, _ = range phagprimers {
 				_, check = primers[primer]
-				_, check2 = primers[twoBitEncoding(revComplement(twoBitDecode(primer)))]
+				_, check2 = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
 				if (!check&&!check2) {
 					var x = make([]uint8, 1)
 					x[0] = clusterNum
@@ -79,7 +81,7 @@ func PrimerAnalysisTest(bps int,strain string){
 					if (check) {
 						x = primers[primer]
 					} else {
-						x = primers[twoBitEncoding(revComplement(twoBitDecode(primer)))]
+						x = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
 					}
 					x.phagecount=x.phagecount+1
 					var found bool = false
@@ -99,7 +101,7 @@ func PrimerAnalysisTest(bps int,strain string){
 					if (check) {
 						primers[primer]=x
 					} else {
-						primers[twoBitEncoding(revComplement(twoBitDecode(primer)))]=x
+						primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=x
 					}
 
 				}
@@ -150,7 +152,7 @@ func testPrimerMatchTest(){
 
 }
 func readTest()[]uint64{
-	f, _ := os.Open(workingDir +"\\Data\\Test.csv")
+	f, _ := os.Open(WorkingDir +"\\Data\\Test.csv")
 	var lines []uint64
 	scanner := bufio.NewScanner(f)
 	count:=0
@@ -173,95 +175,62 @@ func readTest()[]uint64{
 	return lines
 }
 func newMatch(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMatch]float64{
-	seqInd:=make(map[uint64][]int)
+	primerM:=make(map[PrimerMatch]float64)
+	forward:=make(map[int]uint64)
+	reverse:=make(map[int]uint64)
+	forwardFind,_:=regexp.Compile("")
+	reverseFind,_:=regexp.Compile("")
+	for _,p:=range primers{
+		forwardFind,_=regexp.Compile(twoBitDecode(p))
+		reverseFind,_=regexp.Compile(RevComplement(twoBitDecode(p)))
+		fF:=forwardFind.FindAllStringIndex(seq,-1)
+		rF:=reverseFind.FindAllStringIndex(seq,-1)
+		for _,loc:=range fF{
+			forward[loc[0]]=p
+			//println(loc[0])
+		}
+		for _,loc:=range rF{
+			reverse[loc[0]]=twoBitEncoding(RevComplement(twoBitDecode(p)))
+			//println(loc[0])
+		}
 
-	/**
-	 HASH SEQ
-	 */
-	var rc,temp,list []int;
-	var sub uint64;
-	for i := 0; i <= len(seq) - 10; i++ {
-		sub = twoBitEncoding(seq[i:i + 10]);
-		_,check:=seqInd[sub]
-		if (check) {
-			rc = seqInd[sub];
-			temp = make([]int,len(rc)+1);
-			for j:=0;j<len(rc);j++{
-				temp[j]=rc[j]
-			}
-			temp[len(rc)]=i;
-			seqInd[sub]=temp;
-		} else {
-			list =make([]int,1);
-			list[0]=i;
-			seqInd[sub]= list;
-		}
 	}
-	/**
-	 LOCATION INDEXING
-	 */
-	forward := make(map[int]uint64)
-	reverse := make(map[int]uint64)
-	var part,part2,rprimer, primer uint64;
-	var integers,integersr []int;
-	var sequence1,sequence2 string ;
-	var check bool;
-	for _,primer=range primers{
-		sequence1 = twoBitDecode(primer);
-		part = twoBitEncoding(sequence1[0:10]);
-		integers,check= seqInd[part];
-		if (check) {
-			for _,num:=range integers{
-				if ((len(sequence1) + num) < len(seq) &&
-					seq[num:len(sequence1) + num]==sequence1) {
-					forward[num]=primer;
-				}
-			}
-		}
-		rprimer = twoBitEncoding(revComplement(twoBitDecode(primer)));
-		sequence2 = twoBitDecode(rprimer);
-		part2 = twoBitEncoding(sequence2[0:10])
-		integersr, check= seqInd[part2];
-		if (check) {
-			for _,num:=range integersr{
-				if ((len(sequence2) + num) < len(seq) &&
-					seq[num:len(sequence2) + num]==sequence2) {
-					reverse[num]=rprimer;
-				}
-			}
-		}
+	ind:=0
+	var f=make([]int,len(forward))
+	var r=make([]int,len(reverse))
+	for i,_:=range forward{
+		f[ind]=i
+		ind++
 	}
-	/**
-	 * FRAGMENT FINDING
-	 */
-
-	primerMatch:=make(map[PrimerMatch]float64)
-	var a, b,frag int
-	for a,primer=range forward{
-		if(len(reverse)==0){
-			break
-		}
-		for b, rprimer=range reverse{
+	ind=0
+	for i,_:=range reverse{
+		r[ind]=i
+		ind++
+	}
+	sort.Ints(f)
+	sort.Ints(r)
+	println(len(f))
+	println(len(r))
+	var frag,b,a,i,j int
+	for i=0;i<len(f);i++{
+		a=f[i]
+		for j=0;j<len(r);j++{
+			b=r[j]
 			frag=b-a
-			if(frag<500){
-				continue
+			if(!(frag<500)){
+				break
 			}
 		}
 		if(frag>2000){
 			continue
 		}else{
-			if(math.Abs(primerTm[primer]-primerTm[rprimer])<5.0){
-				match := PrimerMatch{primer,rprimer};
-				_,check:=primerMatch[match]
-				if(!check){
-					primerMatch[match]=float64(frag);
-				}else{
-					delete(primerMatch,match)
-				}
+			if (math.Abs(primerTm[forward[a]]-primerTm[reverse[b]])<5.0) {
+				match:=PrimerMatch{forward[a],reverse[b]}
+				primerM[match]=float64(frag)
 			}
 		}
 	}
-	return primerMatch
+	return primerM
 }
 func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMatch]float64{
 	seqInd:=make(map[uint64][]int)
@@ -310,7 +279,7 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 				}
 			}
 		}
-		rprimer = twoBitEncoding(revComplement(twoBitDecode(primer)));
+		rprimer = twoBitEncoding(RevComplement(twoBitDecode(primer)));
 		sequence2 = twoBitDecode(rprimer);
 		part2 = twoBitEncoding(sequence2[0:10])
 		integersr, check= seqInd[part2];
@@ -409,74 +378,104 @@ func MatchingTest(strain string, cluster string){
 			 */
 	phageList:=ParsePhages()
 	primerTm:=make(map[uint64]float64)
-	matchedPrimers:=make(map[PrimerMatch][]float64)
+	//matchedPrimers:=make(map[PrimerMatch][]float64)
 	primers:= ReadUniquePrimers(cluster,strain)
 	//var size bool=true;
 	phages:=phageList[strain][cluster]
-	for i:=0;i<len(primers);i++{
-		primerTm[primers[i]]=easytm(twoBitDecode(primers[i]))
-		primerTm[twoBitEncoding(revComplement(twoBitDecode(primers[i])))]=
-			easytm(revComplement(twoBitDecode(primers[i])))
-		//if(len(twoBitDecode(primers[i]))!=18){
-		//	size=false
-		//}
+	for _,primer:=range primers{
+		primerTm[primer]=easytm(twoBitDecode(primer))
+		primerTm[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=
+			easytm(RevComplement(twoBitDecode(primer)))
 	}
-	//fmt.Println(size)
-	if (len(phages) > 1) {
+	count:=0
+	for _,seq:=range phages{
+		if(count==0){
+			batch:=newMatch(seq,primers,primerTm)
+			for primerM,frag:=range batch{
+				fmt.Print(twoBitDecode(primerM.f)+" "+twoBitDecode(primerM.r))
+				fmt.Print(" ")
+				fmt.Println(frag)
+				//temp:=make([]float64,1)
+				//temp[0]=frag
 
-		/**
-		 GRAB PRIMERS
-		 */
-
-		fmt.Println(len(primers));
-		fmt.Println(len(phages));
-		count:=0;
-		for _,seq:=range phages {
-			/**
-			 * FOR EACH PHAGE
-			 */
-			if(count==0){
-				batch:=newMatch(seq,primers,primerTm);
-				for primerM,frag:=range batch{
-					temp:=make([]float64,1)
-					temp[0]=frag
-					matchedPrimers[primerM]=temp
-				}
-				//println(len(matchedPrimers))
-			}else{
-				batch:=newMatch(seq,primers,primerTm);
-				for primerM,frag:=range batch{
-					arr,check:=matchedPrimers[primerM]
-					if(check){
-						temp:=make([]float64,len(arr)+1)
-						for i:=0;i<len(arr);i++{
-							temp[i]=arr[i]
-						}
-						temp[len(arr)]=frag
-						matchedPrimers[primerM]=temp
-					}
-				}
-				//println(len(matchedPrimers))
 			}
-			count++
+		}
+	}
+}
+var wg sync.WaitGroup
+func UniqueConfirm(strain string){
+	phagList:=ParsePhages()
+	clusters:=phagList[strain]
+	for cluster,phages:=range clusters{
+		println("Checking:"+cluster)
+		primers:=ReadUniquePrimers(strain,cluster)
+		var re=make(chan string, len(phages))
+		for _,seq:=range phages{
+			wg.Add(1)
+			go testUniquePresent(primers,seq,re)
+		}
+		wg.Wait()
+		for range phages{
+			x:=<-re
+			print(x)
+		}
+		println()
+		println("checking others")
+		for otherc,phagesc:=range clusters{
+			if(otherc!=cluster){
+				var re=make(chan string, len(phagesc))
+				for _,seq:=range phagesc{
+					wg.Add(1)
+					go testUniqueNotPresent(primers,seq,re)
+				}
+				wg.Wait()
+				for range phagesc{
+					x:=<-re
+					print(x)
+				}
+			}
+
 		}
 	}
 
-	fmt.Println("Matches Compiled");
-	fmt.Println(len(matchedPrimers));
-	//for primerM,arr :=range matchedPrimers{
-	//	arr = matchFrags.get(m);
-	//	newA = new double[arr.length];
-	//	for(int i=0;i<arr.length;i++){
-	//		newA[i]=arr[i];
-	//	}
-	//	db.insertMatchedPrimer(m.foward,m.reverse,z,x,newA);
-	//	count++;
-	//}
-	//System.out.fmt.Println(count);
-	//System.out.fmt.Println();
-	//log.fmt.Println(z);
-	//log.flush();
-	//System.gc();
-	//db.insertMatchedPrimerCommit();
+}
+func testUniquePresent(primers []uint64,seq string,re chan string){
+	defer wg.Done()
+	var found bool=true
+	for _,p:=range primers{
+		if(!strings.Contains(seq,twoBitDecode(p))&&!
+			strings.Contains(seq, RevComplement(twoBitDecode(p)))){
+			found=false
+		}
+	}
+	if(found){
+		re<-""
+	}else{
+		re<-"not found"
+	}
+}
+func testUniqueNotPresent(primers []uint64,seq string,re chan string){
+	defer wg.Done()
+	var found bool=false
+	for _,p:=range primers{
+		if(strings.Contains(seq,twoBitDecode(p))||
+			strings.Contains(seq, RevComplement(twoBitDecode(p)))){
+			found=true
+		}
+	}
+	if(found){
+		re<-"not found"
+	}else{
+		re<-""
+	}
+}
+func TestRegex(){
+	seq:=ReadFile(WorkingDir+"\\Fastas\\20ES.fasta")
+	x,_:=regexp.Compile("GATCGTC")
+	for _,y:=range x.FindAllStringIndex(seq,-1){
+		print(y[0])
+		print(" ")
+		println(y[1])
+	}
+
 }

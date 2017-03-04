@@ -46,7 +46,7 @@ func twoBitDecode(encoded uint64)string{
 	}
 	return builder;
 }
-func revComplement(seq string)string{
+func RevComplement(seq string)string{
 	newString:=""
 	for i:=0;i<len(seq);i++{
 		if(seq[len(seq)-1-i]=='G'||seq[len(seq)-1-i]=='g'){

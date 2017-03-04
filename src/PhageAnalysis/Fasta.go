@@ -15,11 +15,23 @@ var down=false
 var multi=false
 var online=false
 var verbose=false
-var workingDir =""
+var WorkingDir =""
 
 func importFile(file string)string{
 	fileBytes, _:=ioutil.ReadFile(file)
 	return string(fileBytes)
+}
+func ReadFile(file string)string{
+	f, _ := os.Open(file)
+	var lines string =""
+	scanner := bufio.NewReader(f)
+	line,_,_:=scanner.ReadLine()
+	for  string(line)!=""{
+		lines=lines+string(line)+"\n"
+		line,_,_=scanner.ReadLine()
+	}
+
+	return lines
 }
 func DownloadFromUrl(url string, fileName string) {
 	if(verbose){
@@ -51,7 +63,7 @@ func DownloadFromUrl(url string, fileName string) {
 	}
 }
 func ReadUniquePrimers(cluster string, strain string)[]uint64{
-	f, _ := os.Open(workingDir +"\\Data\\Unique.csv")
+	f, _ := os.Open(WorkingDir +"\\Data\\Unique.csv")
 	var lines []uint64
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -74,7 +86,7 @@ func ReadUniquePrimers(cluster string, strain string)[]uint64{
 }
 func readUniqueClusters()map[string]map[string]bool{
 	clustList:= make(map[string]map[string]bool)
-	f, _ := os.Open(workingDir +"\\Data\\Unique.csv")
+	f, _ := os.Open(WorkingDir +"\\Data\\Unique.csv")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line:=scanner.Text()
@@ -109,14 +121,14 @@ func ParseArgs(args []string)  {
 			verbose=true
 		}
 		if(args[i]=="-path") {
-			workingDir =args[i+1]
+			WorkingDir =args[i+1]
 		}
 	}
 	if(down){
-		DownloadFromUrl("http://phagesdb.org/media/Mycobacteriophages-All.fasta", workingDir +"\\Fastas\\Mycobacteriophages-All.fasta")
+		DownloadFromUrl("http://phagesdb.org/media/Mycobacteriophages-All.fasta", WorkingDir +"\\Fastas\\Mycobacteriophages-All.fasta")
 		if(!multi){
-			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=simple", workingDir +"\\Fastas\\PhageDBData.txt")
-			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=full", workingDir +"\\Fastas\\PhageDBDataFull.txt")
+			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=simple", WorkingDir +"\\Fastas\\PhageDBData.txt")
+			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=full", WorkingDir +"\\Fastas\\PhageDBDataFull.txt")
 		}
 
 	}
@@ -143,9 +155,9 @@ func ParsePhages()map[string]map[string]map[string]string{
 	for nextFile!="ul"{
 		if(online) {
 			DownloadFromUrl(nextFile,
-				workingDir +"\\Fastas\\Phagelist" + strconv.Itoa(count) + ".txt")
+				WorkingDir +"\\Fastas\\Phagelist" + strconv.Itoa(count) + ".txt")
 		}
-		file,_=os.Open(workingDir +"\\Fastas\\Phagelist"+strconv.Itoa(count)+".txt")
+		file,_=os.Open(WorkingDir +"\\Fastas\\Phagelist"+strconv.Itoa(count)+".txt")
 		scanner = bufio.NewReader(file)
 		line,_,_=scanner.ReadLine()
 		firstLine=string(line)
@@ -204,10 +216,10 @@ func ParsePhages()map[string]map[string]map[string]string{
 				//println(strain+" "+cluster+" "+phage+" "+fasta)
 				if(online) {
 					DownloadFromUrl(fasta,
-						workingDir +"\\Fastas\\" + phage + ".fasta")
+						WorkingDir +"\\Fastas\\" + phage + ".fasta")
 
 				}
-				seq=importFile(workingDir +"\\Fastas\\" + phage + ".fasta")
+				seq=ReadFile(WorkingDir +"\\Fastas\\" + phage + ".fasta")
 				lines:=strings.Split(seq,"\n")
 				seq:=""
 				for j:=1;j<len(lines) ; j++ {

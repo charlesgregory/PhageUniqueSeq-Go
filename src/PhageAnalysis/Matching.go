@@ -160,7 +160,7 @@ func match(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMat
 				}
 			}
 		}
-		rprimer = twoBitEncoding(revComplement(twoBitDecode(primer)));
+		rprimer = twoBitEncoding(RevComplement(twoBitDecode(primer)));
 		sequence2 = twoBitDecode(rprimer);
 		part2 = twoBitEncoding(sequence2[0:10])
 		integersr, check= seqInd[part2];
