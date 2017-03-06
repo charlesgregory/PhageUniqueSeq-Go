@@ -17,5 +17,5 @@ func main() {
 	//str:=PhageAnalysis.ReadFile(PhageAnalysis.WorkingDir+"\\Fastas\\20ES.fasta")
 	//println(str)
 	//PhageAnalysis.MatchingTest("Mycobacterium","A1")
-	PhageAnalysis.UniqueConfirm("Mycobacterium")
+	//PhageAnalysis.UniqueConfirm("Mycobacterium")
 }

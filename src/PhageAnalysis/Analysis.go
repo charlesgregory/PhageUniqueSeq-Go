@@ -252,7 +252,8 @@ func DoPrimerAnalysis(from int, to int){
 	w := bufio.NewWriter(f)
 	for i:=from;i<=to;i++{
 		//primerAnalysis(i,w)
-		primerAnalysisDouble(i,w)
+		//primerAnalysisDouble(i,w)
+		PrimerAnalysisTest(i,w)
 	}
 	err = w.Flush() // Don't forget to flush!
 	if err != nil {
