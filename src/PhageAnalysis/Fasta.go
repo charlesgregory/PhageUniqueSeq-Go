@@ -68,7 +68,7 @@ func ReadUniquePrimers(cluster string, strain string)[]uint64{
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line:=scanner.Text()
-		if(strings.Contains(line,strain+",")&&strings.Contains(line,cluster+",")){
+		if(strings.Contains(line,strain+",")&&strings.Contains(line,","+cluster+",")){
 			//println(line)
 			strA:=strings.Split(line,",")
 			i,_:=strconv.ParseUint(strA[2],10,64)

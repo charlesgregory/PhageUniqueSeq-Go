@@ -139,24 +139,20 @@ func match(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMat
 	/**
 	 LOCATION INDEXING
 	 */
-	forward := make(map[int]uint64)
-	reverse := make(map[int]uint64)
+	locations := make(map[int]uint64)
 	var part,part2,rprimer uint64;
 	var integers,integersr []int;
 	var sequence1,sequence2 string ;
 	var check bool;
 	for _,primer:=range primers{
 		sequence1 = twoBitDecode(primer);
-		if(len(sequence1)<10){
-			fmt.Println(sequence1)
-		}
 		part = twoBitEncoding(sequence1[0:10]);
 		integers,check= seqInd[part];
 		if (check) {
 			for _,num:=range integers{
 				if ((len(sequence1) + num) < len(seq) &&
 					seq[num:len(sequence1) + num]==sequence1) {
-					forward[num]=primer;
+					locations[num]=primer;
 				}
 			}
 		}
@@ -168,7 +164,7 @@ func match(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMat
 			for _,num:=range integersr{
 				if ((len(sequence2) + num) < len(seq) &&
 					seq[num:len(sequence2) + num]==sequence2) {
-					reverse[num]=rprimer;
+					locations[num]=primer;
 				}
 			}
 		}
@@ -176,67 +172,51 @@ func match(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMat
 	/**
 	 * FRAGMENT FINDING
 	 */
-	f := make([]int,len(forward))
-	r := make([]int,len(reverse))
+	f := make([]int,len(locations))
 	index:=0
-	for i,_:=range forward{
+	for i,_:=range locations {
 		f[index]=i
 		index++
+		//print(i)
+		//print(" ")
 	}
+	//println()
 	index=0
-	for i,_:=range reverse{
-		r[index]=i
-		index++
-	}
+	//println()
 	sort.Ints(f)
-	sort.Ints(r)
-
-	index =0;
+	count:=0
 	//        int count =0;
 	primerMatch:=make(map[PrimerMatch]float64)
-	var b,frag int;
-	for i:=0;i<len(f);i++{
-		if(index>=len(r)){
-			break
+	var b,a,frag int;
+	for _,a=range f{
+		for _,b=range f{
+			frag=b-a
+			if(frag<500){
+				continue
+			}else{
+				break
+			}
 		}
-		a:=f[i]
-		//            System.out.fmt.Println(count);
-		//            count++;
-		if(index>=len(r)){
-			println()
-		}
-		b=r[index];
-		for(index<len(r)-1&&b<a){
-			index++;
-			b=r[index];
-		}
-		frag =b-a;
-		for(frag<500&&index<len(r)-1){
-			index++;
-			b=r[index];
-			frag = b-a;
-		}
-		for(frag<=2000&& index<len(r)-1){
-			pF := forward[a];
-			pR := reverse[b];
+		if(frag>2000){
+			continue
+		}else{
+			pF := locations[a];
+			pR := locations[b];
+			_,check=primerTm[pF]
+			_,check=primerTm[pR]
 			if(math.Abs(primerTm[pF]-primerTm[pR])<5.0){
-				match := PrimerMatch{pF,pR};
+				match := PrimerMatch{pF,twoBitEncoding(RevComplement(twoBitDecode(pR)))};
 				_,check:=primerMatch[match]
 				if(!check){
 					primerMatch[match]=float64(frag);
+					count++
+					//println("match")
 				}else{
 					delete(primerMatch,match)
+					//println("delete")
 				}
-				index++;
-				b=r[index];
-				frag = b-a;
-			}else{
-				index++;
-				b=r[index];
-				frag = b-a;
 			}
 		}
-		index =0;
 	}
 	return primerMatch
 

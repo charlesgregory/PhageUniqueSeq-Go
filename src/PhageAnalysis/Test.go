@@ -10,178 +10,13 @@ import (
 	"strings"
 	//"time"
 	//"log"
-	"time"
+	//"time"
 	"math"
 	"sort"
 	"regexp"
 	"sync"
 )
 
-//func DoAll(){
-//	//phageList:=createPhageMap()
-//	for strain,clusters:= range phageList {
-//		fmt.Println(strain)
-//		for cluster, phages := range clusters {
-//			fmt.Println("\t" + cluster)
-//			c := make(chan map[uint64]bool)
-//			primers :=make(map[uint64]bool)
-//			for _, seq := range phages {
-//				go makePrimers(seq,18,c)
-//			}
-//			for i := 0; i < len(phages); i++{
-//				temp:=<-c
-//				for k,v :=range temp{
-//					primers[k]=v
-//				}
-//			}
-//		}
-//	}
-//}
-
-func PrimerAnalysisTest(bps int, w *bufio.Writer){
-	phageList:=ParsePhages()
-	//strain:="Mycobacterium"
-	//clusters:=phageList[strain]
-	var strain,cluster string
-	var clusters map[string]map[string]string
-	var phages map[string]string
-	var primers map[uint64]Primer
-	var temp map[uint64]Primer
-	var clustersMap map[uint8]string
-	for strain,clusters= range phageList{
-		t1:=time.Now()
-		primers= make(map[uint64]Primer)
-		clustersMap=make(map[uint8]string)
-		fmt.Println(strain)
-		var clusterNum uint8=0
-		var primer uint64
-		var x,prim Primer
-		var check,check2 bool
-		var primChan =make(chan map[uint64]Primer,len(clusters))
-		for cluster,phages=range clusters {
-			clustersMap[clusterNum]=cluster
-			go byCluster(phages,clusterNum,bps,clustersMap,cluster,primChan)
-			clusterNum=clusterNum+1
-
-		}
-		for range clusters{
-			temp=<-primChan
-			for primer,prim=range temp{
-				_, check = primers[primer]
-				_, check2 = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-				if (!check&&!check2) {
-					primers[primer] = prim
-				} else {
-					if (check) {
-						x = primers[primer]
-					} else {
-						x = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-					}
-					x.phagecount=x.phagecount+prim.phagecount
-					var found bool = false
-					var clust uint8
-					for _,clust=range x.clusters {
-						if (clust == prim.clusters[0]) {
-							found = true
-						}
-					}
-					if (!found) {
-						var newArr = make([]uint8, len(x.clusters) + 1)
-						for i := 0; i < len(x.clusters); i++ {
-							newArr[i] = x.clusters[i]
-						}
-						newArr[len(x.clusters)] = prim.clusters[0]
-						x.clusters=newArr
-					}
-					if (check) {
-						primers[primer]=x
-					} else {
-						primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=x
-					}
-
-				}
-			}
-		}
-		t2:=time.Now()
-		fmt.Println(time.Since(t1).Minutes())
-		fmt.Println(len(primers))
-		//keepPrimers:=make(map[uint64]Primer)
-		count:=0
-		for p,v:=range primers{
-
-			if(len(v.clusters)==1){
-				//count++
-				primerClust:=v.clusters[0]
-				if(len(clusters[clustersMap[primerClust]])==v.phagecount){
-					count++
-					w.WriteString(strain+",")
-					w.WriteString(clustersMap[primerClust])
-					w.WriteString(",")
-					w.WriteString(strconv.FormatUint(p,10)+"\n")
-				}
-			}
-		}
-		fmt.Println(time.Since(t2).Minutes())
-		fmt.Println(count)
-
-
-	}
-
-}
-func byCluster(phages map[string]string,
-clusterNum uint8,bps int,clustersMap map[uint8]string,
-cluster string, primerChan chan map[uint64]Primer){
-	fmt.Println("\t"+cluster)
-	var seq string
-	var check,check2 bool
-	var phagprimers map[uint64]bool
-	var primers =make(map[uint64]Primer)
-	var primer uint64
-	for _,seq=range phages{
-		//fmt.Println("\t\t"+phage)
-		//go makePrimers(seq,bps,primChan)
-		phagprimers=make(map[uint64]bool)
-		for k:= 0; k <= len(seq) - bps; k++ {
-			primer=twoBitEncoding(seq[k:k+bps])
-			phagprimers[primer]=true
-		}
-		for primer, _ = range phagprimers {
-			_, check = primers[primer]
-			_, check2 = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-			if (!check&&!check2) {
-				var x = make([]uint8, 1)
-				x[0] = clusterNum
-				primers[primer] = Primer{x, 1}
-			} else {
-				var x Primer;
-				if (check) {
-					x = primers[primer]
-				} else {
-					x = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-				}
-				x.phagecount=x.phagecount+1
-				if (check) {
-					primers[primer]=x
-				} else {
-					primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=x
-				}
-
-			}
-
-		}
-		//fmt.Println(phage)
-	}
-	primerChan<-primers
-}
-func testPrimerMatchTest(){
-	m:=make(map[PrimerMatch]bool)
-	x:=PrimerMatch{twoBitEncoding("GTACGA"),twoBitEncoding("GATCAG")}
-	y:=PrimerMatch{twoBitEncoding("GTACGA"),twoBitEncoding("GATCAG")}
-	println(x==y)
-	m[x]=true
-	println(m[y]==true)
-
-}
 func readTest()[]uint64{
 	f, _ := os.Open(WorkingDir +"\\Data\\Test.csv")
 	var lines []uint64
@@ -292,8 +127,7 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 	/**
 	 LOCATION INDEXING
 	 */
-	forward := make(map[int]uint64)
-	reverse := make(map[int]uint64)
+	locations := make(map[int]uint64)
 	var part,part2,rprimer uint64;
 	var integers,integersr []int;
 	var sequence1,sequence2 string ;
@@ -306,7 +140,7 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 			for _,num:=range integers{
 				if ((len(sequence1) + num) < len(seq) &&
 					seq[num:len(sequence1) + num]==sequence1) {
-					forward[num]=primer;
+					locations[num]=primer;
 				}
 			}
 		}
@@ -318,7 +152,7 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 			for _,num:=range integersr{
 				if ((len(sequence2) + num) < len(seq) &&
 					seq[num:len(sequence2) + num]==sequence2) {
-					reverse[num]=rprimer;
+					locations[num]=primer;
 				}
 			}
 		}
@@ -326,10 +160,9 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 	/**
 	 * FRAGMENT FINDING
 	 */
-	f := make([]int,len(forward))
-	r := make([]int,len(reverse))
+	f := make([]int,len(locations))
 	index:=0
-	for i,_:=range forward{
+	for i,_:=range locations {
 		f[index]=i
 		index++
 		//print(i)
@@ -337,48 +170,30 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 	}
 	//println()
 	index=0
-	for i,_:=range reverse{
-		r[index]=i
-		index++
-		//print(i)
-		//print(" ")
-	}
 	//println()
 	sort.Ints(f)
-	sort.Ints(r)
 	count:=0
-	index =0;
 	//        int count =0;
 	primerMatch:=make(map[PrimerMatch]float64)
-	var b,frag int;
-	for i:=0;i<len(f);i++{
-		if(index>=len(r)){
-			break
+	var b,a,frag int;
+	for _,a=range f{
+		for _,b=range f{
+			frag=b-a
+			if(frag<500){
+				continue
+			}else{
+				break
+			}
 		}
-		a:=f[i]
-		//            System.out.fmt.Println(count);
-		//            count++;
-		if(index>=len(r)){
-			println()
-		}
-		b=r[index];
-		for(index<len(r)-1&&b<a){
-			index++;
-			b=r[index];
-		}
-		frag =b-a;
-		for(frag<500&&index<len(r)-1){
-			index++;
-			b=r[index];
-			frag = b-a;
-		}
-		for(frag<=2000&& index<len(r)-1){
-			pF := forward[a];
-			pR := reverse[b];
+		if(frag>2000){
+			continue
+		}else{
+			pF := locations[a];
+			pR := locations[b];
 			_,check=primerTm[pF]
 			_,check=primerTm[pR]
 			if(math.Abs(primerTm[pF]-primerTm[pR])<5.0){
-				match := PrimerMatch{pF,pR};
+				match := PrimerMatch{pF,twoBitEncoding(RevComplement(twoBitDecode(pR)))};
 				_,check:=primerMatch[match]
 				if(!check){
 					primerMatch[match]=float64(frag);
@@ -388,16 +203,8 @@ func matchTest(seq string,primers []uint64,primerTm map[uint64]float64)map[Prime
 					delete(primerMatch,match)
 					//println("delete")
 				}
-				index++;
-				b=r[index];
-				frag = b-a;
-			}else{
-				index++;
-				b=r[index];
-				frag = b-a;
 			}
 		}
-		index =0;
 	}
 	println(count)
 	return primerMatch
@@ -415,13 +222,21 @@ func MatchingTest(strain string, cluster string){
 	phages:=phageList[strain][cluster]
 	for _,primer:=range primers{
 		primerTm[primer]=easytm(twoBitDecode(primer))
-		primerTm[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=
-			easytm(RevComplement(twoBitDecode(primer)))
 	}
 	count:=0
 	for _,seq:=range phages{
+		//for _,p:=range primers{
+		//	ind:=strings.Index(seq,twoBitDecode(p))
+		//	if(ind==-1){
+		//		ind=strings.Index(RevComplement(seq),RevComplement(twoBitDecode(p)))
+		//		if(ind==-1){
+		//			count++
+		//		}
+		//	}
+		//}
+		//println(count)
 		if(count==0){
-			batch:=newMatch(seq,primers,primerTm)
+			batch:=matchTest(seq,primers,primerTm)
 			for primerM,frag:=range batch{
 				fmt.Print(twoBitDecode(primerM.f)+" "+twoBitDecode(primerM.r))
 				fmt.Print(" ")
@@ -444,29 +259,35 @@ func UniqueConfirm(strain string){
 		for _,seq:=range phages{
 			wg.Add(1)
 			go testUniquePresent(primers,seq,re)
+			//for _,p:=range primers{
+			//	if(!strings.Contains(seq,twoBitDecode(p))&&!
+			//		strings.Contains(seq, RevComplement(twoBitDecode(p)))){
+			//		println(phage+" "+twoBitDecode(p)+" "+RevComplement(twoBitDecode(p)))
+			//	}
+			//}
 		}
 		wg.Wait()
 		for range phages{
 			x:=<-re
 			print(x)
 		}
-		println()
-		println("checking others")
-		for otherc,phagesc:=range clusters{
-			if(otherc!=cluster){
-				var re=make(chan string, len(phagesc))
-				for _,seq:=range phagesc{
-					wg.Add(1)
-					go testUniqueNotPresent(primers,seq,re)
-				}
-				wg.Wait()
-				for range phagesc{
-					x:=<-re
-					print(x)
-				}
-			}
-
-		}
+		//println()
+		//println("checking others")
+		//for otherc,phagesc:=range clusters{
+		//	if(otherc!=cluster){
+		//		var re=make(chan string, len(phagesc))
+		//		for _,seq:=range phagesc{
+		//			wg.Add(1)
+		//			go testUniqueNotPresent(primers,seq,re)
+		//		}
+		//		wg.Wait()
+		//		for range phagesc{
+		//			x:=<-re
+		//			print(x)
+		//		}
+		//	}
+		//
+		//}
 	}
 
 }
@@ -476,6 +297,7 @@ func testUniquePresent(primers []uint64,seq string,re chan string){
 	for _,p:=range primers{
 		if(!strings.Contains(seq,twoBitDecode(p))&&!
 			strings.Contains(seq, RevComplement(twoBitDecode(p)))){
+
 			found=false
 		}
 	}
