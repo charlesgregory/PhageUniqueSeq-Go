@@ -15,10 +15,11 @@ import (
 	"sort"
 	"regexp"
 	"sync"
+	"log"
 )
 
 func readTest()[]uint64{
-	f, _ := os.Open(WorkingDir +"\\Data\\Test.csv")
+	f, _ := os.Open(WorkingDir +""+pathslash+"Data"+pathslash+"Test.csv")
 	var lines []uint64
 	scanner := bufio.NewScanner(f)
 	count:=0
@@ -254,7 +255,9 @@ func UniqueConfirm(strain string){
 	clusters:=phagList[strain]
 	for cluster,phages:=range clusters{
 		println("Checking:"+cluster)
-		primers:=ReadUniquePrimers(strain,cluster)
+		primers:=ReadUniquePrimers(cluster,strain)
+		println(len(primers))
+		println(len(phages))
 		var re=make(chan string, len(phages))
 		for _,seq:=range phages{
 			wg.Add(1)
@@ -271,23 +274,24 @@ func UniqueConfirm(strain string){
 			x:=<-re
 			print(x)
 		}
-		//println()
-		//println("checking others")
-		//for otherc,phagesc:=range clusters{
-		//	if(otherc!=cluster){
-		//		var re=make(chan string, len(phagesc))
-		//		for _,seq:=range phagesc{
-		//			wg.Add(1)
-		//			go testUniqueNotPresent(primers,seq,re)
-		//		}
-		//		wg.Wait()
-		//		for range phagesc{
-		//			x:=<-re
-		//			print(x)
-		//		}
-		//	}
-		//
-		//}
+		println()
+		println("checking others")
+		for otherc,phagesc:=range clusters{
+			if(otherc!=cluster){
+				println("\t"+otherc)
+				var re=make(chan string, len(phagesc))
+				for _,seq:=range phagesc{
+					wg.Add(1)
+					go testUniqueNotPresent(primers,seq,re)
+				}
+				wg.Wait()
+				for range phagesc{
+					x:=<-re
+					print(x)
+				}
+			}
+
+		}
 	}
 
 }
@@ -317,13 +321,13 @@ func testUniqueNotPresent(primers []uint64,seq string,re chan string){
 		}
 	}
 	if(found){
-		re<-"not found"
+		re<-"found"
 	}else{
 		re<-""
 	}
 }
 func TestRegex(){
-	seq:=ReadFile(WorkingDir+"\\Fastas\\20ES.fasta")
+	seq:=ReadFile(WorkingDir+"Fastas"+pathslash+"20ES.fasta")
 	x,_:=regexp.Compile("GATCGTC")
 	for _,y:=range x.FindAllStringIndex(seq,-1){
 		print(y[0])
@@ -331,4 +335,28 @@ func TestRegex(){
 		println(y[1])
 	}
 
+}
+func ExportClusterSummary(){
+	f, err := os.Create(WorkingDir +"Data"+pathslash+"ClusterSummary.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	phageList:=ParsePhages()
+	for strain,clusters:=range phageList{
+		for cluster,phages:=range clusters{
+			primers:=ReadUniquePrimers(cluster,strain)
+			w.WriteString(strain+",")
+			w.WriteString(cluster)
+			w.WriteString(",")
+			w.WriteString(strconv.Itoa(len(phages)))
+			w.WriteString(",")
+			w.WriteString(strconv.Itoa(len(primers))+"\n")
+		}
+	}
+	err = w.Flush() // Don't forget to flush!
+	if err != nil {
+		log.Fatal(err)
+	}
 }

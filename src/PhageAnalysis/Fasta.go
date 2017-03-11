@@ -10,13 +10,18 @@ import (
 	"bufio"
 	"strconv"
 	"regexp"
+	"runtime"
 )
 var down=false
 var multi=false
 var online=false
 var verbose=false
+var analysis=false
+var matchT=false
+var parallel=false
 var WorkingDir =""
-
+var pathslash=""
+var Ostype =runtime.GOOS
 func importFile(file string)string{
 	fileBytes, _:=ioutil.ReadFile(file)
 	return string(fileBytes)
@@ -63,13 +68,14 @@ func DownloadFromUrl(url string, fileName string) {
 	}
 }
 func ReadUniquePrimers(cluster string, strain string)[]uint64{
-	f, _ := os.Open(WorkingDir +"\\Data\\Unique.csv")
+	f, _ := os.Open(WorkingDir +"Data"+pathslash+"Unique.csv")
 	var lines []uint64
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line:=scanner.Text()
+		//println(line)
 		if(strings.Contains(line,strain+",")&&strings.Contains(line,","+cluster+",")){
-			//println(line)
+
 			strA:=strings.Split(line,",")
 			i,_:=strconv.ParseUint(strA[2],10,64)
 			lines = append(lines,i )
@@ -84,35 +90,18 @@ func ReadUniquePrimers(cluster string, strain string)[]uint64{
 	}
 	return lines
 }
-func readUniqueClusters()map[string]map[string]bool{
-	clustList:= make(map[string]map[string]bool)
-	f, _ := os.Open(WorkingDir +"\\Data\\Unique.csv")
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line:=scanner.Text()
-		strA:=strings.Split(line,",")
-		_,check:=clustList[strA[0]]
-		if(check){
-			clustList[strA[0]][strA[1]]=true
-		}else{
-			clustList[strA[0]]=make(map[string]bool)
-			clustList[strA[0]][strA[1]]=true
-		}
-
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-	return clustList
-}
 
 func ParseArgs(args []string)  {
+	var bps int=0
+	var bps2 int=0
+	if Ostype == "windows" {
+		pathslash="\\"
+	}else{
+		pathslash="/"
+	}
 	for i:=0;i<len(args);i++{
 		if(args[i]=="-download") {
 			down=true
-		}
-		if(args[i]=="-onlyMulti") {
-			multi=true
 		}
 		if(args[i]=="-online") {
 			online=true
@@ -122,16 +111,44 @@ func ParseArgs(args []string)  {
 		}
 		if(args[i]=="-path") {
 			WorkingDir =args[i+1]
+			if(WorkingDir[len(WorkingDir)-1]!='\\'||WorkingDir[len(WorkingDir)-1]!='\\'){
+				if Ostype == "windows" {
+					WorkingDir=WorkingDir+pathslash
+				}else{
+					WorkingDir=WorkingDir+pathslash
+				}
+			}
+		}
+		if(args[i]=="-analysis"){
+			analysis=true
+			bps,_=strconv.Atoi(args[i+1])
+			bps2,_=strconv.Atoi(args[i+2])
+		}
+		if(args[i]=="-match"){
+			matchT=true
+		}
+		if(args[i]=="-parallel") {
+			parallel=true
 		}
 	}
-	if(down){
-		DownloadFromUrl("http://phagesdb.org/media/Mycobacteriophages-All.fasta", WorkingDir +"\\Fastas\\Mycobacteriophages-All.fasta")
-		if(!multi){
-			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=simple", WorkingDir +"\\Fastas\\PhageDBData.txt")
-			DownloadFromUrl("http://phagesdb.org/data/?set=seq&type=full", WorkingDir +"\\Fastas\\PhageDBDataFull.txt")
+	if WorkingDir==""{
+		if Ostype == "windows" {
+			WorkingDir="..\\"
+		}else{
+			WorkingDir="../"
 		}
+	}
+	if(analysis){
+		DoPrimerAnalysis(bps,bps2,parallel)
+	}
+	if(matchT){
+		if(parallel){
+			MatchPrimersParallel()
+		} else{
+			MatchPrimers()
+		}
+	}
 
-	}
 }
 func ParsePhages()map[string]map[string]map[string]string{
 	println("Building seqs")
@@ -155,9 +172,9 @@ func ParsePhages()map[string]map[string]map[string]string{
 	for nextFile!="ul"{
 		if(online) {
 			DownloadFromUrl(nextFile,
-				WorkingDir +"\\Fastas\\Phagelist" + strconv.Itoa(count) + ".txt")
+				WorkingDir +"Fastas"+pathslash+"Phagelist" + strconv.Itoa(count) + ".txt")
 		}
-		file,_=os.Open(WorkingDir +"\\Fastas\\Phagelist"+strconv.Itoa(count)+".txt")
+		file,_=os.Open(WorkingDir +"Fastas"+pathslash+"Phagelist"+strconv.Itoa(count)+".txt")
 		scanner = bufio.NewReader(file)
 		line,_,_=scanner.ReadLine()
 		firstLine=string(line)
@@ -216,10 +233,10 @@ func ParsePhages()map[string]map[string]map[string]string{
 				//println(strain+" "+cluster+" "+phage+" "+fasta)
 				if(online) {
 					DownloadFromUrl(fasta,
-						WorkingDir +"\\Fastas\\" + phage + ".fasta")
+						WorkingDir +"Fastas"+pathslash + phage + ".fasta")
 
 				}
-				seq=ReadFile(WorkingDir +"\\Fastas\\" + phage + ".fasta")
+				seq=ReadFile(WorkingDir +"Fastas"+pathslash + phage + ".fasta")
 				lines:=strings.Split(seq,"\n")
 				seq:=""
 				for j:=1;j<len(lines) ; j++ {
