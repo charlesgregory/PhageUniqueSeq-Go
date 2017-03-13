@@ -13,7 +13,7 @@ import (
 	"fmt"
 )
 type Primer struct{
-	clusters []uint8
+	clusters map[uint8]bool
 	phagecount int
 }
 type PrimerMatch struct {
@@ -55,8 +55,8 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 					_, check = primers[primer]
 					_, check2 = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
 					if (!check&&!check2) {
-						var x = make([]uint8, 1)
-						x[0] = clusterNum
+						var x = make(map[uint8]bool)
+						x[clusterNum]=true
 						primers[primer] = Primer{x, 1}
 					} else {
 						var x Primer;
@@ -67,19 +67,9 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 						}
 						x.phagecount=x.phagecount+1
 						var found bool = false
-						var clust uint8
-						for _,clust=range x.clusters {
-							if (clustersMap[clust] == cluster) {
-								found = true
-							}
-						}
+						_,found=x.clusters[clusterNum]
 						if (!found) {
-							var newArr = make([]uint8, len(x.clusters) + 1)
-							for i := 0; i < len(x.clusters); i++ {
-								newArr[i] = x.clusters[i]
-							}
-							newArr[len(x.clusters)] = clusterNum
-							x.clusters=newArr
+							x.clusters[clusterNum]=true
 						}
 						if (check) {
 							primers[primer]=x
@@ -113,7 +103,10 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 
 			if(len(v.clusters)==1){
 				//count++
-				primerClust:=v.clusters[0]
+				var primerClust uint8=0
+				for key,_:=range v.clusters{
+					primerClust=key
+				}
 				if(len(clusters[clustersMap[primerClust]])==v.phagecount){
 					count++
 					w.WriteString(strain+",")
@@ -173,18 +166,12 @@ func PrimerAnalysisParallel(bps int, w *bufio.Writer,phageList map[string]map[st
 					}
 					var found bool = false
 					var clust uint8
-					for _,clust=range x.clusters {
-						if (clust == prim.clusters[0]) {
-							found = true
-						}
+					for key,_:=range prim.clusters {
+						clust=key
 					}
+					_,found=x.clusters[clust]
 					if (!found) {
-						var newArr = make([]uint8, len(x.clusters) + 1)
-						for i := 0; i < len(x.clusters); i++ {
-							newArr[i] = x.clusters[i]
-						}
-						newArr[len(x.clusters)] = prim.clusters[0]
-						x.clusters=newArr
+						x.clusters[clust]=true
 					}
 					if (check) {
 						primers[primer]=x
@@ -205,7 +192,10 @@ func PrimerAnalysisParallel(bps int, w *bufio.Writer,phageList map[string]map[st
 
 			if(len(v.clusters)==1){
 				//count++
-				primerClust:=v.clusters[0]
+				var primerClust uint8
+				for key,_:=range v.clusters{
+					primerClust=key
+				}
 				if(len(clusters[clustersMap[primerClust]])==v.phagecount){
 					count++
 					w.WriteString(strain+",")
@@ -243,8 +233,8 @@ cluster string, primerChan chan map[uint64]Primer){
 			_, check = primers[primer]
 			_, check2 = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
 			if (!check&&!check2) {
-				var x = make([]uint8, 1)
-				x[0] = clusterNum
+				var x = make(map[uint8]bool)
+				x[clusterNum]=true
 				primers[primer] = Primer{x, 1}
 			} else {
 				var x Primer;
