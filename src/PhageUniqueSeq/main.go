@@ -11,7 +11,8 @@ func main() {
 	//println(PhageAnalysis.WorkingDir)
 	//PhageAnalysis.TestRegex()
 	//PhageAnalysis.ExportClusterSummary()
-	//PhageAnalysis.DoPrimerAnalysis(18,25,true)
+	//PhageAnalysis.TestPrimer()
+	//PhageAnalysis.DoPrimerAnalysis(18,18,true)
 	//PhageAnalysis.PrimerAnalysisTest(18,"Mycobacterium")
 	//x:=PhageAnalysis.ReadUniquePrimers("B1","Mycobacterium")
 	//println(len(x))
@@ -20,4 +21,6 @@ func main() {
 	//println(str)
 	//PhageAnalysis.MatchingTest("Mycobacterium","A1")
 	PhageAnalysis.UniqueConfirm("Mycobacterium")
+	//PhageAnalysis.UniqueConfirmCluster("Mycobacterium","A1")
+	//PhageAnalysis.FindPrimer("Mycobacterium","CTTCCACGGCGAGGACCC")
 }

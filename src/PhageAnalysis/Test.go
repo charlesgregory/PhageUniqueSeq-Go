@@ -256,12 +256,12 @@ func UniqueConfirm(strain string){
 	for cluster,phages:=range clusters{
 		println("Checking:"+cluster)
 		primers:=ReadUniquePrimers(cluster,strain)
-		println(len(primers))
-		println(len(phages))
+		//println(len(primers))
+		//println(len(phages))
 		var re=make(chan string, len(phages))
-		for _,seq:=range phages{
+		for phage,seq:=range phages{
 			wg.Add(1)
-			go testUniquePresent(primers,seq,re)
+			go testUniquePresent(primers,seq,re,phage)
 			//for _,p:=range primers{
 			//	if(!strings.Contains(seq,twoBitDecode(p))&&!
 			//		strings.Contains(seq, RevComplement(twoBitDecode(p)))){
@@ -295,20 +295,90 @@ func UniqueConfirm(strain string){
 	}
 
 }
-func testUniquePresent(primers []uint64,seq string,re chan string){
+func UniqueConfirmCluster(strain string,cluster string){
+	phagList:=ParsePhages()
+	phages:=phagList[strain][cluster]
+	println("Checking:"+cluster)
+	primers:=ReadUniquePrimers(cluster,strain)
+	println(len(primers))
+	println(len(phages))
+	var re=make(chan string, len(phages))
+	for phage,seq:=range phages{
+		wg.Add(1)
+		go testUniquePresent(primers,seq,re,phage)
+		//for _,p:=range primers{
+		//	if(!strings.Contains(seq,twoBitDecode(p))&&!
+		//		strings.Contains(seq, RevComplement(twoBitDecode(p)))){
+		//		println(phage+" "+twoBitDecode(p)+" "+RevComplement(twoBitDecode(p)))
+		//	}
+		//}
+	}
+	wg.Wait()
+	for range phages{
+		x:=<-re
+		print(x)
+	}
+	//println()
+	//println("checking others")
+	//for otherc,phagesc:=range clusters{
+	//	if(otherc!=cluster){
+	//		println("\t"+otherc)
+	//		var re=make(chan string, len(phagesc))
+	//		for _,seq:=range phagesc{
+	//			wg.Add(1)
+	//			go testUniqueNotPresent(primers,seq,re)
+	//		}
+	//		wg.Wait()
+	//		for range phagesc{
+	//			x:=<-re
+	//			print(x)
+	//		}
+	//	}
+	//
+	//}
+
+}
+func FindPrimer(strain string,p string){
+	phagList:=ParsePhages()
+	clusters:=phagList[strain]
+	phageCount:=0
+	clusterMap:=make(map[string]bool)
+	for cluster,phages:=range clusters{
+		temp:=phageCount
+		for _,seq:=range phages{
+			if(strings.Contains(seq,p)||
+				strings.Contains(seq, RevComplement(p))){
+				phageCount++
+			}
+		}
+		if phageCount!=temp{
+			clusterMap[cluster]=true
+		}
+	}
+	var clust string
+	for k,_:=range clusterMap{
+		println(k)
+		clust=k
+	}
+	println(len(clusters[clust]))
+	println(phageCount)
+
+}
+func testUniquePresent(primers []uint64,seq string,re chan string,phage string){
 	defer wg.Done()
 	var found bool=true
+	var str string=""
 	for _,p:=range primers{
 		if(!strings.Contains(seq,twoBitDecode(p))&&!
 			strings.Contains(seq, RevComplement(twoBitDecode(p)))){
-
+			str=str+twoBitDecode(p)+" "+RevComplement(twoBitDecode(p))+" "+phage+"\n"
 			found=false
 		}
 	}
 	if(found){
 		re<-""
 	}else{
-		re<-"not found"
+		re<-str
 	}
 }
 func testUniqueNotPresent(primers []uint64,seq string,re chan string){
@@ -334,6 +404,12 @@ func TestRegex(){
 		print(" ")
 		println(y[1])
 	}
+
+}
+func TestPrimer(){
+	var x Primer
+	x.addCluster(1)
+	println(len(x.clusters))
 
 }
 func ExportClusterSummary(){
