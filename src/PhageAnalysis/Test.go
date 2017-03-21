@@ -396,6 +396,50 @@ func testUniqueNotPresent(primers []uint64,seq string,re chan string){
 		re<-""
 	}
 }
+func MatchingConfirm(strain string){
+	phagList:=ParsePhages()
+	clusters:=phagList[strain]
+	var prim map[PrimerMatch]Stat
+	for cluster,phages:=range clusters{
+		prim=ReadMatchedPrimers(cluster,strain)
+		var arr =make([]float64,len(phages))
+		println(cluster)
+		for p,s:=range prim{
+			var sum float64 = 0.0
+			var avg float64 = 0.0
+			var stddev float64 = 0.0
+			count:=0
+			for _,seq:=range phages{
+				locf:=strings.Index(seq,twoBitDecode(p.F))
+				locr:=strings.Index(seq,twoBitDecode(p.R))
+				arr[count]=float64(locf)-float64(locr)
+				count++
+			}
+			for _,i:=range arr{
+				sum=sum+i
+			}
+			avg=sum/float64(len(arr))
+			for _,i:=range arr{
+				stddev=stddev+(math.Pow(i-avg,2))
+			}
+			stddev=stddev/float64(len(arr))
+			stddev=math.Sqrt(stddev)
+			if(s.Mean!=avg||s.Stddev!=stddev){
+				print(cluster)
+				print(" ")
+				print(twoBitDecode(p.F))
+				print(" ")
+				print(twoBitDecode(p.R))
+				print(" ")
+				print(s.Mean)
+				print(" ")
+				print(s.Stddev)
+				println()
+			}
+		}
+	}
+}
+func testMatchPresent(){}
 func TestRegex(){
 	seq:=ReadFile(WorkingDir+"Fastas"+pathslash+"20ES.fasta")
 	x,_:=regexp.Compile("GATCGTC")
