@@ -90,7 +90,40 @@ func ReadUniquePrimers(cluster string, strain string)[]uint64{
 	}
 	return lines
 }
+func ReadMatchedPrimers(cluster string, strain string)map[PrimerMatch]Stat {
+	f, _ := os.Open(WorkingDir +"Data"+pathslash+"Matched.csv")
+	var lines= make(map[PrimerMatch]Stat)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line:=scanner.Text()
+		//println(line)
+		if(strings.Contains(line,strain+",")&&strings.Contains(line,","+cluster+",")){
+			//println(line)
+			strA:=strings.Split(line,",")
+			var s Stat
+			var f float64
+			f,_=strconv.ParseFloat(strA[4],64)
+			s.Mean=f
+			f,_=strconv.ParseFloat(strA[5],64)
+			s.Stddev=f
+			lines[PrimerMatch{twoBitEncoding(strA[2]),
+				twoBitEncoding(strA[3])}]= s
+			//println(strA[3])
+			//i,_:=strconv.ParseUint(strA[2],10,64)
+			//lines = append(lines,i )
 
+		}
+
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	return lines
+}
+type Stat struct {
+	Mean   float64
+	Stddev float64
+}
 func ParseArgs(args []string)  {
 	var bps int=0
 	var bps2 int=0

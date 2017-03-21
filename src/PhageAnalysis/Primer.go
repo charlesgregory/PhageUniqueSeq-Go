@@ -25,6 +25,6 @@ func (p *Primer)combine(prim Primer){
 	p.phagecount=p.phagecount+prim.phagecount
 }
 type PrimerMatch struct {
-	f uint64
-	r uint64
+	F uint64
+	R uint64
 }

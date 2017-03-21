@@ -239,7 +239,7 @@ func MatchingTest(strain string, cluster string){
 		if(count==0){
 			batch:=matchTest(seq,primers,primerTm)
 			for primerM,frag:=range batch{
-				fmt.Print(twoBitDecode(primerM.f)+" "+twoBitDecode(primerM.r))
+				fmt.Print(twoBitDecode(primerM.F)+" "+twoBitDecode(primerM.R))
 				fmt.Print(" ")
 				fmt.Println(frag)
 				//temp:=make([]float64,1)
