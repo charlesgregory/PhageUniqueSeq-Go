@@ -411,8 +411,12 @@ func MatchingConfirm(strain string){
 			count:=0
 			for _,seq:=range phages{
 				locf:=strings.Index(seq,twoBitDecode(p.F))
-				locr:=strings.Index(seq,twoBitDecode(p.R))
-				arr[count]=float64(locf)-float64(locr)
+				locr:=strings.Index(seq,RevComplement(twoBitDecode(p.R)))
+				if(locf==-1||locr==-1){
+					locf=strings.Index(seq,RevComplement(twoBitDecode(p.F)))
+					locr=strings.Index(seq,twoBitDecode(p.R))
+				}
+				arr[count]=math.Abs(float64(locf)-float64(locr))
 				count++
 			}
 			for _,i:=range arr{
@@ -424,17 +428,21 @@ func MatchingConfirm(strain string){
 			}
 			stddev=stddev/float64(len(arr))
 			stddev=math.Sqrt(stddev)
-			if(s.Mean!=avg||s.Stddev!=stddev){
-				print(cluster)
-				print(" ")
-				print(twoBitDecode(p.F))
-				print(" ")
-				print(twoBitDecode(p.R))
-				print(" ")
-				print(s.Mean)
-				print(" ")
-				print(s.Stddev)
-				println()
+			if(math.Abs(s.Mean-avg)>0.01||math.Abs(s.Stddev-stddev)>0.01){
+				fmt.Print(cluster)
+				fmt.Print(" ")
+				fmt.Print(twoBitDecode(p.F))
+				fmt.Print(" ")
+				fmt.Print(twoBitDecode(p.R))
+				fmt.Print(" ")
+				fmt.Print(s.Mean)
+				fmt.Print(" ")
+				fmt.Print(avg)
+				fmt.Print(" ")
+				fmt.Print(s.Stddev)
+				fmt.Print(" ")
+				fmt.Print(stddev)
+				fmt.Println()
 			}
 		}
 	}
