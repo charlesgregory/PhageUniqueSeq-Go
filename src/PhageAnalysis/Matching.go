@@ -9,91 +9,7 @@ import (
 	"bufio"
 	"strconv"
 )
-
-func MatchPrimers(){
-	phageList:=ParsePhages();
-	for strain,clusters:=range phageList {
-
-		/**
-		 FOR EACH STRAIN
-		 */
-		fmt.Println("Starting:" + strain)
-		for cluster,phages:=range clusters {
-
-			/**
-			 FOR EACH CLUSTER
-			 */
-			fmt.Println(cluster)
-			primerTm:=make(map[uint64]float64)
-			matchedPrimers:=make(map[PrimerMatch][]float64)
-			primers:= ReadUniquePrimers(cluster,strain)
-			//var size bool=true;
-			for i:=0;i<len(primers);i++{
-				primerTm[primers[i]]=easytm(twoBitDecode(primers[i]))
-			}
-			//fmt.Println(size)
-			if (len(phages) > 1) {
-
-				/**
-				 GRAB PRIMERS
-				 */
-
-				fmt.Println(len(primers));
-				fmt.Println(len(phages));
-				count:=0;
-				for _,seq:=range phages {
-					/**
-					 * FOR EACH PHAGE
-					 */
-					if(count==0){
-						batch:=match(seq,primers,primerTm);
-						for primerM,frag:=range batch{
-							temp:=make([]float64,1)
-							temp[0]=frag
-							matchedPrimers[primerM]=temp
-						}
-					}else{
-						batch:=match(seq,primers,primerTm);
-						for primerM,frag:=range batch{
-							arr,check:=matchedPrimers[primerM]
-							if(check){
-								temp:=make([]float64,len(arr)+1)
-								for i:=0;i<len(arr);i++{
-									temp[i]=arr[i]
-								}
-								temp[len(arr)]=frag
-								matchedPrimers[primerM]=temp
-							}
-						}
-					}
-					count++
-				}
-			}
-
-			fmt.Println("Matches Compiled");
-			fmt.Println(len(matchedPrimers));
-			//for primerM,arr :=range matchedPrimers{
-			//	arr = matchFrags.get(m);
-			//	newA = new double[arr.length];
-			//	for(int i=0;i<arr.length;i++){
-			//		newA[i]=arr[i];
-			//	}
-			//	db.insertMatchedPrimer(m.foward,m.reverse,z,x,newA);
-			//	count++;
-			//}
-			//System.out.fmt.Println(count);
-			//System.out.fmt.Println();
-			//log.fmt.Println(z);
-			//log.flush();
-			//System.gc();
-			//db.insertMatchedPrimerCommit();
-		}
-		//System.out.fmt.Println((System.nanoTime() - time) / Math.pow(10, 9) / 60.0);
-	}
-	fmt.Println("Matches Submitted");
-	//db.db.close();
-}
-func MatchPrimersParallel(){
+func MatchPrimersParallel(threads int){
 	f, err := os.Create(WorkingDir +"Data"+pathslash+"Matched.csv")
 	if err != nil {
 		log.Fatal(err)
@@ -129,11 +45,16 @@ func MatchPrimersParallel(){
 				}
 				fmt.Println(len(primers));
 				fmt.Println(len(phages));
-				count:=0;
-				primChan:= make(chan map[PrimerMatch]float64,len(phages))
-				for _,seq:=range phages {
-					go matchRoutine(seq,primers,primerTm,primChan)
+				var primChan= make(chan map[PrimerMatch]float64,len(phages))
+				var jobs = make(chan MatchingWork, len(clusters))
+				for w := 1; w <= threads; w++ {
+					go MatchingWorker(jobs, primChan)
 				}
+				for _,seq:=range phages {
+					jobs <- MatchingWork{seq,primers,primerTm}
+				}
+				close(jobs)
+				count:=0;
 				for range phages {
 					/**
 					 * FOR EACH PHAGE
@@ -237,117 +158,6 @@ func easytm(primer string)float64{
 	re=64.9 +41*(float64(g+c)-16.4)/float64(a+t+g+c)
 	return re
 }
-func match(seq string,primers []uint64,primerTm map[uint64]float64)map[PrimerMatch]float64{
-	seqInd:=make(map[uint64][]int)
-
-	/**
-	 HASH SEQ
-	 */
-	var rc,temp,list []int;
-	var sub uint64;
-	for i := 0; i <= len(seq) - 10; i++ {
-		sub = twoBitEncoding(seq[i:i + 10]);
-		_,check:=seqInd[sub]
-		if (check) {
-			rc = seqInd[sub];
-			temp = make([]int,len(rc)+1);
-			for j:=0;j<len(rc);j++{
-				temp[j]=rc[j]
-			}
-			temp[len(rc)]=i;
-			seqInd[sub]=temp;
-		} else {
-			list =make([]int,1);
-			list[0]=i;
-			seqInd[sub]= list;
-		}
-	}
-
-	/**
-	 LOCATION INDEXING
-	 */
-	locations := make(map[int]uint64)
-	var part,part2,rprimer uint64;
-	var integers,integersr []int;
-	var sequence1,sequence2 string ;
-	var check bool;
-	for _,primer:=range primers{
-		sequence1 = twoBitDecode(primer);
-		part = twoBitEncoding(sequence1[0:10]);
-		integers,check= seqInd[part];
-		if (check) {
-			for _,num:=range integers{
-				if ((len(sequence1) + num) < len(seq) &&
-					seq[num:len(sequence1) + num]==sequence1) {
-					locations[num]=primer;
-				}
-			}
-		}
-		rprimer = twoBitEncoding(RevComplement(twoBitDecode(primer)));
-		sequence2 = twoBitDecode(rprimer);
-		part2 = twoBitEncoding(sequence2[0:10])
-		integersr, check= seqInd[part2];
-		if (check) {
-			for _,num:=range integersr{
-				if ((len(sequence2) + num) < len(seq) &&
-					seq[num:len(sequence2) + num]==sequence2) {
-					locations[num]=primer;
-				}
-			}
-		}
-	}
-	/**
-	 * FRAGMENT FINDING
-	 */
-	f := make([]int,len(locations))
-	index:=0
-	for i,_:=range locations {
-		f[index]=i
-		index++
-		//print(i)
-		//print(" ")
-	}
-	//println()
-	index=0
-	//println()
-	sort.Ints(f)
-	count:=0
-	//        int count =0;
-	primerMatch:=make(map[PrimerMatch]float64)
-	var b,a,frag int;
-	for _,a=range f{
-		for _,b=range f{
-			frag=b-a
-			if(frag<500){
-				continue
-			}else{
-				break
-			}
-		}
-		if(frag>2000){
-			continue
-		}else{
-			pF := locations[a];
-			pR := locations[b];
-			_,check=primerTm[pF]
-			_,check=primerTm[pR]
-			if(math.Abs(primerTm[pF]-primerTm[pR])<5.0){
-				match := PrimerMatch{pF,twoBitEncoding(RevComplement(twoBitDecode(pR)))};
-				_,check:=primerMatch[match]
-				if(!check){
-					primerMatch[match]=float64(frag);
-					count++
-					//println("match")
-				}else{
-					delete(primerMatch,match)
-					//println("delete")
-				}
-			}
-		}
-	}
-	return primerMatch
-
-}
 func matchRoutine(seq string,primers []uint64,primerTm map[uint64]float64,
 pMchan chan map[PrimerMatch]float64){
 	seqInd:=make(map[uint64][]int)
@@ -379,10 +189,10 @@ pMchan chan map[PrimerMatch]float64){
 	 LOCATION INDEXING
 	 */
 	locations := make(map[int]uint64)
-	var part,part2,rprimer uint64;
+	var part,part2,rprimer,pF,pR uint64;
 	var integers,integersr []int;
 	var sequence1,sequence2 string ;
-	var check bool;
+	var check,check2 bool;
 	for _,primer:=range primers{
 		sequence1 = twoBitDecode(primer);
 		part = twoBitEncoding(sequence1[0:10]);
@@ -411,51 +221,53 @@ pMchan chan map[PrimerMatch]float64){
 	/**
 	 * FRAGMENT FINDING
 	 */
-	f := make([]int,len(locations))
+	var f = make([]int,len(locations))
 	index:=0
 	for i,_:=range locations {
 		f[index]=i
 		index++
-		//print(i)
-		//print(" ")
 	}
-	//println()
 	index=0
-	//println()
 	sort.Ints(f)
 	count:=0
-	//        int count =0;
 	primerMatch:=make(map[PrimerMatch]float64)
-	var b,a,frag int;
-	for _,a=range f{
-		for _,b=range f{
-			frag=b-a
-			if(frag<500){
-				continue
-			}else{
+	remove:=make(map[PrimerMatch]bool)
+	var b,a,frag,i,j,llimit,ulimit int;
+	var match,match2 PrimerMatch
+	for i,a=range f{
+		llimit=a+500
+		ulimit=a+2000
+		for j=i+1;j<len(f);j++{
+			b=f[j]
+			//println(b)
+			if b>=llimit&&b<=ulimit{
+				frag=b-a
+				pF = locations[a];
+				pR = locations[b];
+				if(math.Abs(primerTm[pF]-primerTm[pR])<5.0){
+					match = PrimerMatch{pF,twoBitEncoding(RevComplement(twoBitDecode(pR)))};
+					_,check=primerMatch[match]
+					match2 = PrimerMatch{twoBitEncoding(RevComplement(twoBitDecode(pF))),pR};
+					_,check2=primerMatch[match]
+					if(!check&&!check2){
+						primerMatch[match]=float64(frag);
+						count++
+						//println("match")
+					}else{
+						if(check){
+							remove[match]=true
+						}else{
+							remove[match2]=true
+						}
+					}
+				}
+			}else if b>ulimit{
 				break
 			}
 		}
-		if(frag>2000){
-			continue
-		}else{
-			pF := locations[a];
-			pR := locations[b];
-			_,check=primerTm[pF]
-			_,check=primerTm[pR]
-			if(math.Abs(primerTm[pF]-primerTm[pR])<5.0){
-				match := PrimerMatch{pF,twoBitEncoding(RevComplement(twoBitDecode(pR)))};
-				_,check:=primerMatch[match]
-				if(!check){
-					primerMatch[match]=float64(frag);
-					count++
-					//println("match")
-				}else{
-					delete(primerMatch,match)
-					//println("delete")
-				}
-			}
-		}
+	}
+	for p,_:=range remove{
+		delete(primerMatch,p)
 	}
 	pMchan<-primerMatch
 

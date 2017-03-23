@@ -13,7 +13,7 @@ import (
 	"fmt"
 )
 /***/
-func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map[string]string,para bool){
+func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map[string]string){
 	//strain:="Mycobacterium"
 	//clusters:=phageList[strain]
 	var strain,cluster string
@@ -32,21 +32,13 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 		var x,prim Primer
 		var check,check2 bool
 		var primChan =make(chan map[uint64]Primer,len(clusters))
-		if(para){
-			for cluster,phages=range clusters {
-				clustersMap[clusterNum]=cluster
-				go byCluster(phages,clusterNum,bps,clustersMap,cluster,primChan)
-				clusterNum=clusterNum+1
+		for cluster,phages=range clusters {
+			clustersMap[clusterNum]=cluster
+			byCluster(phages,clusterNum,bps,cluster,primChan)
+			clusterNum=clusterNum+1
 
-			}
-		}else{
-			for cluster,phages=range clusters {
-				clustersMap[clusterNum]=cluster
-				byCluster(phages,clusterNum,bps,clustersMap,cluster,primChan)
-				clusterNum=clusterNum+1
-
-			}
 		}
+
 		for range clusters{
 			temp=<-primChan
 			for primer,prim=range temp{
@@ -98,7 +90,7 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 
 }
 func byCluster(phages map[string]string,
-clusterNum uint8,bps int,clustersMap map[uint8]string,
+clusterNum uint8,bps int,
 cluster string, primerChan chan map[uint64]Primer){
 	fmt.Println("\t"+cluster)
 	var seq string
@@ -157,7 +149,7 @@ cluster string, primerChan chan map[uint64]Primer){
 	}
 	primerChan<-primers
 }
-func PrimerAnalysisWorker(bps int, w *bufio.Writer,phageList map[string]map[string]map[string]string,threads int){
+func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[string]map[string]string,threads int){
 	//strain:="Mycobacterium"
 	//clusters:=phageList[strain]
 	var strain,cluster string
@@ -240,7 +232,7 @@ func PrimerAnalysisWorker(bps int, w *bufio.Writer,phageList map[string]map[stri
 	}
 
 }
-func DoPrimerAnalysis(from int, to int, para bool){
+func DoPrimerAnalysis(from int, to int){
 	f, err := os.Create(WorkingDir +"Data"+pathslash+"Unique.csv")
 	if err != nil {
 		log.Fatal(err)
@@ -249,14 +241,14 @@ func DoPrimerAnalysis(from int, to int, para bool){
 	w := bufio.NewWriter(f)
 	phageList:=ParsePhages()
 	for i:=from;i<=to;i++{
-		PrimerAnalysis(i,w,phageList,para)
+		PrimerAnalysis(i,w,phageList)
 	}
 	err = w.Flush() // Don't forget to flush!
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-func TestPrimerAnalysis(from int, to int,threads int){
+func DoPrimerAnalysisMulti(from int, to int,threads int){
 	f, err := os.Create(WorkingDir +"Data"+pathslash+"Unique.csv")
 	if err != nil {
 		log.Fatal(err)
@@ -265,7 +257,7 @@ func TestPrimerAnalysis(from int, to int,threads int){
 	w := bufio.NewWriter(f)
 	phageList:=ParsePhages()
 	for i:=from;i<=to;i++{
-		PrimerAnalysisWorker(i,w,phageList,threads-1)
+		PrimerAnalysisMulti(i,w,phageList,threads-1)
 	}
 	err = w.Flush() // Don't forget to flush!
 	if err != nil {

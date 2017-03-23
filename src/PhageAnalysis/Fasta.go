@@ -19,6 +19,7 @@ var verbose=false
 var analysis=false
 var matchT=false
 var parallel=false
+var threads =0
 var WorkingDir =""
 var pathslash=""
 var Ostype =runtime.GOOS
@@ -162,6 +163,7 @@ func ParseArgs(args []string)  {
 		}
 		if(args[i]=="-parallel") {
 			parallel=true
+			threads,_=strconv.Atoi(args[i+1])
 		}
 	}
 	if WorkingDir==""{
@@ -172,13 +174,15 @@ func ParseArgs(args []string)  {
 		}
 	}
 	if(analysis){
-		DoPrimerAnalysis(bps,bps2,parallel)
+		if(parallel&&threads>1){
+			DoPrimerAnalysisMulti(bps,bps2,threads)
+		}else{
+			DoPrimerAnalysis(bps,bps2)
+		}
 	}
 	if(matchT){
 		if(parallel){
-			MatchPrimersParallel()
-		} else{
-			MatchPrimers()
+			MatchPrimersParallel(threads-1)
 		}
 	}
 
