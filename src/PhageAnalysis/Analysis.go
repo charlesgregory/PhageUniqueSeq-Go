@@ -232,6 +232,62 @@ func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[strin
 	}
 
 }
+func MakeOneBaseMismatches(seq string)[]uint64{
+	var misarr = make([]uint64,0)
+	for i := 0; i < len(seq); i++ {
+		switch seq[i] {
+		case 'A':
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"G"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"T"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"C"+ seq[i+1:]))
+		case 'G':
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"A"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"T"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"C"+ seq[i+1:]))
+		case 'T':
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"A"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"G"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"C"+ seq[i+1:]))
+		case 'C':
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"A"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"G"+ seq[i+1:]))
+			misarr=append(misarr,twoBitEncoding(seq[:i]+"T"+ seq[i+1:]))
+		}
+	}
+	return misarr
+}
+func MakeTwoBaseMismatches(onemis []uint64)map[uint64]bool{
+	var misarr = make(map[uint64]bool)
+	var mis uint64
+	var j int
+	var seq string
+	for j,mis=range onemis{
+		seq=twoBitDecode(mis)
+		for i := 0; i < len(seq); i++ {
+			if(i!=j/3){
+				switch seq[i] {
+				case 'A':
+					misarr[twoBitEncoding(seq[:i]+"G"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"T"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"C"+ seq[i+1:])]=true
+				case 'G':
+					misarr[twoBitEncoding(seq[:i]+"A"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"T"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"C"+ seq[i+1:])]=true
+				case 'T':
+					misarr[twoBitEncoding(seq[:i]+"A"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"G"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"C"+ seq[i+1:])]=true
+				case 'C':
+					misarr[twoBitEncoding(seq[:i]+"A"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"G"+ seq[i+1:])]=true
+					misarr[twoBitEncoding(seq[:i]+"T"+ seq[i+1:])]=true
+				}
+			}
+		}
+	}
+	return misarr
+}
 func DoPrimerAnalysis(from int, to int){
 	f, err := os.Create(WorkingDir +"Data"+pathslash+"Unique.csv")
 	if err != nil {

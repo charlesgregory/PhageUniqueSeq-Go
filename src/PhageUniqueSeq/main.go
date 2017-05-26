@@ -3,21 +3,22 @@ package main
 import "os"
 import (
 	"PhageAnalysis"
-	"time"
+	//"time"
 )
 
 
 func main() {
+	//PhageAnalysis.Test()
 	PhageAnalysis.ParseArgs(os.Args)
 	//println(PhageAnalysis.WorkingDir)
 	//PhageAnalysis.TestRegex()
 	//PhageAnalysis.ExportClusterSummary()
 	//PhageAnalysis.TestPrimer()
-	t:=time.Now()
+	//t:=time.Now()
 	//PhageAnalysis.DoPrimerAnalysisMulti(18,18,2)
-	PhageAnalysis.MatchPrimersParallel(2)
-	print("Time:")
-	println(time.Since(t).Minutes())
+	//PhageAnalysis.MatchPrimersParallel(2)
+	//print("Time:")
+	//println(time.Since(t).Minutes())
 	//PhageAnalysis.PrimerAnalysisTest(18,"Mycobacterium")
 	//PhageAnalysis.MatchPrimersParallel()
 	//str:=PhageAnalysis.ReadFile(PhageAnalysis.WorkingDir+"\\Fastas\\20ES.fasta")

@@ -488,3 +488,12 @@ func ExportClusterSummary(){
 		log.Fatal(err)
 	}
 }
+func Test(){
+	x:=MakeOneBaseMismatches("GATCGAGTCGATGGGGGGTCTAGTC")
+	y:=MakeTwoBaseMismatches(x)
+	println(len(x))
+	println(len(y))
+	//for z,_:=range y{
+	//	println(twoBitDecode(z))
+	//}
+}
