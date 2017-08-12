@@ -1,28 +1,34 @@
 package PhageAnalysis
 
 type Primer struct{
-	clusters map[uint8]bool
-	phagecount uint16
+	clusters map[uint8]uint8
 }
 func (p *Primer)addCluster(c uint8){
-	var temp map[uint8]bool
+	var temp map[uint8]uint8
 	if(len(p.clusters)>0){
-		p.clusters[c]=true
+		p.clusters[c]=0
 	}else{
-		temp=make(map[uint8]bool)
-		temp[c]=true
+		temp=make(map[uint8]uint8)
+		temp[c]=0
 		p.clusters=temp
 	}
 }
-func (p *Primer)addPhage(){
-	p.phagecount++
+func (p *Primer)addPhage(c uint8){
+	p.clusters[c]=p.clusters[c]+1
 }
 func (p *Primer)combine(prim Primer){
 	var key uint8
-	for key,_=range prim.clusters{
-		p.clusters[key]=true
+	var value uint8
+	var check bool
+	for key,value=range prim.clusters{
+		_,check = p.clusters[key]
+		if(check){
+			p.clusters[key]=p.clusters[key]+value
+		}else{
+			p.clusters[key]=value
+		}
+
 	}
-	p.phagecount=p.phagecount+prim.phagecount
 }
 type PrimerMatch struct {
 	F uint64

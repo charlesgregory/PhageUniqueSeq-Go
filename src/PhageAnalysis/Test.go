@@ -16,6 +16,8 @@ import (
 	"regexp"
 	"sync"
 	"log"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"time"
 )
 
 func readTest()[]uint64{
@@ -489,10 +491,13 @@ func ExportClusterSummary(){
 	}
 }
 func Test(){
-	x:=MakeOneBaseMismatches("GATCGAGTCGATGGGGGGTCTAGTC")
-	y:=MakeTwoBaseMismatches(x)
-	println(len(x))
-	println(len(y))
+	t1:=time.Now()
+	for i:=0;i<10000000;i++{
+		levenshtein.DistanceForStrings(
+			[]rune("GATGATGCTAGCGATCGA"),[]rune("GATTGATCGGACTAGGCT"),
+			levenshtein.DefaultOptions)
+	}
+	fmt.Println(time.Since(t1).Seconds())
 	//for z,_:=range y{
 	//	println(twoBitDecode(z))
 	//}

@@ -2,6 +2,7 @@ package PhageAnalysis
 
 import (
 	"bufio"
+	//"github.com/texttheater/golang-levenshtein/levenshtein"
 	//"time"
 	//"fmt"
 	//"strconv"
@@ -31,12 +32,12 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 		var primer uint64
 		var x,prim Primer
 		var check,check2 bool
+
 		var primChan =make(chan map[uint64]Primer,len(clusters))
 		for cluster,phages=range clusters {
 			clustersMap[clusterNum]=cluster
 			byCluster(phages,clusterNum,bps,cluster,primChan)
 			clusterNum=clusterNum+1
-
 		}
 
 		for range clusters{
@@ -70,10 +71,12 @@ func PrimerAnalysis(bps int, w *bufio.Writer,phageList map[string]map[string]map
 			if(len(v.clusters)==1){
 				//count++
 				var primerClust uint8
-				for key,_:=range v.clusters{
+				var phagecount uint8
+				for key,value:=range v.clusters{
 					primerClust=key
+					phagecount=value
 				}
-				if(len(clusters[clustersMap[primerClust]])==int(v.phagecount)){
+				if(len(clusters[clustersMap[primerClust]])==int(phagecount)){
 					count++
 					w.WriteString(strain+",")
 					w.WriteString(clustersMap[primerClust])
@@ -117,18 +120,18 @@ cluster string, primerChan chan map[uint64]Primer){
 			if (!check&&!check2) {
 				var x Primer
 				x.addCluster(clusterNum)
-				x.addPhage()
+				x.addPhage(clusterNum)
 				primers[primer] = x
 			} else {
 				if (check) {
 					var x Primer;
 					x = primers[primer]
-					x.addPhage()
+					x.addPhage(clusterNum)
 					primers[primer]=x
 				}else if(check2){
 					var x Primer;
 					x = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-					x.addPhage()
+					x.addPhage(clusterNum)
 					primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=x
 				}
 
@@ -149,7 +152,7 @@ cluster string, primerChan chan map[uint64]Primer){
 	}
 	primerChan<-primers
 }
-func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[string]map[string]string,threads int){
+func PrimerAnalysisMulti(bps int, uniqueDB *bufio.Writer,fullDB *bufio.Writer,phageList map[string]map[string]map[string]string,threads int){
 	//strain:="Mycobacterium"
 	//clusters:=phageList[strain]
 	var strain,cluster string
@@ -158,6 +161,8 @@ func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[strin
 	var primers map[uint64]Primer
 	var temp map[uint64]Primer
 	var clustersMap map[uint8]string
+	ucount :=0
+	fcount :=0
 	for strain,clusters= range phageList{
 		t1:=time.Now()
 		primers= make(map[uint64]Primer)
@@ -169,7 +174,7 @@ func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[strin
 		var check,check2 bool
 		var jobs = make(chan AnalysisWork, len(clusters))
 		var primChan =make(chan map[uint64]Primer,len(clusters))
-
+		var totalphagecount=0
 
 		for w := 1; w <= threads; w++ {
 			go AnalysisWorker(jobs, primChan)
@@ -179,7 +184,7 @@ func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[strin
 			clustersMap[clusterNum]=cluster
 			jobs <- AnalysisWork{phages,clusterNum,bps,cluster}
 			clusterNum=clusterNum+1
-
+			totalphagecount=totalphagecount+len(phages)
 		}
 		close(jobs)
 		for range clusters{
@@ -211,22 +216,56 @@ func PrimerAnalysisMulti(bps int, w *bufio.Writer,phageList map[string]map[strin
 		count:=0
 		for p,v:=range primers{
 			if(len(v.clusters)==1){
-				//count++
 				var primerClust uint8
-				for key,_:=range v.clusters{
+				var phagecount uint8
+				var key uint8
+				var value uint8
+				for key,value=range v.clusters{
 					primerClust=key
+					phagecount=value
 				}
-				if(len(clusters[clustersMap[primerClust]])==int(v.phagecount)){
+				if(len(clusters[clustersMap[primerClust]])==int(phagecount)){
 					count++
-					w.WriteString(strain+",")
-					w.WriteString(clustersMap[primerClust])
-					w.WriteString(",")
-					w.WriteString(strconv.FormatUint(p,10)+"\n")
+					ucount++
+					uniqueDB.WriteString(">gnl|unqdb|")
+					uniqueDB.WriteString(strconv.Itoa(ucount)+" ")
+					uniqueDB.WriteString(strain+" ")
+					uniqueDB.WriteString(clustersMap[primerClust]+" \n")
+					uniqueDB.WriteString(twoBitDecode(p)+"\n")
+				}else{
+					var key uint8
+					var value uint8
+					fcount++
+					fullDB.WriteString(">gnl|otherdb|")
+					fullDB.WriteString(strconv.Itoa(fcount)+" ")
+					fullDB.WriteString(strain+" ")
+					for key,value=range v.clusters{
+						var perc= float64(value)/float64(len(clusters[clustersMap[key]]))
+						fullDB.WriteString(clustersMap[key]+":"+
+							strconv.FormatFloat(perc,'f',3,64)+" ")
+
+					}
+					fullDB.WriteString("\n"+twoBitDecode(p)+"\n")
 				}
+			}else{
+				var key uint8
+				var value uint8
+				fcount++
+				fullDB.WriteString(">gnl|otherdb|")
+				fullDB.WriteString(strconv.Itoa(fcount)+" ")
+				fullDB.WriteString(strain+" ")
+				for key,value=range v.clusters{
+					var perc= float64(value)/float64(len(clusters[clustersMap[key]]))
+					fullDB.WriteString(clustersMap[key]+":"+
+						strconv.FormatFloat(perc,'f',3,64)+" ")
+
+				}
+				fullDB.WriteString("\n"+twoBitDecode(p)+"\n")
 			}
 		}
 		fmt.Println(time.Since(t2).Minutes())
 		fmt.Println(count)
+		fmt.Println(totalphagecount)
 
 
 	}
@@ -305,17 +344,27 @@ func DoPrimerAnalysis(from int, to int){
 	}
 }
 func DoPrimerAnalysisMulti(from int, to int,threads int){
-	f, err := os.Create(WorkingDir +"Data"+pathslash+"Unique.csv")
+	ufile, err := os.Create(WorkingDir +"Data"+pathslash+"UniqueDB.fasta")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
-	w := bufio.NewWriter(f)
+	defer ufile.Close()
+	ffile, err := os.Create(WorkingDir +"Data"+pathslash+"FullDB.fasta")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ffile.Close()
+	w1 := bufio.NewWriter(ufile)
+	w2 := bufio.NewWriter(ffile)
 	phageList:=ParsePhages()
 	for i:=from;i<=to;i++{
-		PrimerAnalysisMulti(i,w,phageList,threads-1)
+		PrimerAnalysisMulti(i,w1,w2,phageList,threads-1)
 	}
-	err = w.Flush() // Don't forget to flush!
+	err = w1.Flush() // Don't forget to flush!
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = w2.Flush() // Don't forget to flush!
 	if err != nil {
 		log.Fatal(err)
 	}

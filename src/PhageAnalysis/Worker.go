@@ -44,18 +44,18 @@ cluster string)map[uint64]Primer{
 			if (!check&&!check2) {
 				var x Primer
 				x.addCluster(clusterNum)
-				x.addPhage()
+				x.addPhage(clusterNum)
 				primers[primer] = x
 			} else {
 				if (check) {
 					var x Primer;
 					x = primers[primer]
-					x.addPhage()
+					x.addPhage(clusterNum)
 					primers[primer]=x
 				}else if(check2){
 					var x Primer;
 					x = primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]
-					x.addPhage()
+					x.addPhage(clusterNum)
 					primers[twoBitEncoding(RevComplement(twoBitDecode(primer)))]=x
 				}
 

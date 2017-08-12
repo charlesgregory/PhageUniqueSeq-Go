@@ -42,6 +42,7 @@
       <root url="file://C:/Go/src/mime" />
       <root url="file://C:/Go/src/path" />
       <root url="file://C:/Go/src/go" />
+      <root url="file://$USER_HOME$/go/src/github.com" />
       <root url="file://C:/Go/src/builtin" />
       <root url="file://C:/Go/src/plugin" />
       <root url="file://C:/Go/src/bytes" />
@@ -89,6 +90,7 @@
       <root url="file://C:/Go/src/mime" />
       <root url="file://C:/Go/src/path" />
       <root url="file://C:/Go/src/go" />
+      <root url="file://$USER_HOME$/go/src/github.com" />
       <root url="file://C:/Go/src/builtin" />
       <root url="file://C:/Go/src/plugin" />
       <root url="file://C:/Go/src/bytes" />
